@@ -1,0 +1,46 @@
+services:
+  enter-data:
+    build: ./enter-data
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mysql
+      - authentication-service
+
+  show-results:
+    build: ./show-results
+    ports:
+      - "8002:8002"
+    depends_on:
+      - mongodb
+      - authentication-service
+
+  authentication-service:
+    build: ./authentication-service
+    ports:
+      - "8000:8000"
+
+  analytics-service:
+    build: ./analytics-service
+    depends_on:
+      - mysql
+      - mongodb
+
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: datadb
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+
+  mongodb:
+    image: mongo:latest
+    volumes:
+      - ./mongodb/init.js:/docker-entrypoint-initdb.d/init.js
+      - mongodb_data:/data/db
+
+volumes:
+  mysql_data:
+  mongodb_data:
