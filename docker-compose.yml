@@ -3,44 +3,94 @@ services:
     build: ./enter-data
     ports:
       - "8001:8001"
+    networks:
+      - data-processing
     depends_on:
-      - mysql
-      - authentication-service
+      authentication-service:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+    env_file:
+      - ./.env_enter_data
 
   show-results:
     build: ./show-results
     ports:
       - "8002:8002"
     depends_on:
-      - mongodb
-      - authentication-service
+      mongodb:
+        condition: service_healthy
+      authentication-service:
+        condition: service_started
+    env_file:
+      - ./.env_show_results
+    networks:
+      - data-processing
 
   authentication-service:
     build: ./authentication-service
     ports:
       - "8000:8000"
+    networks:
+      - data-processing
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   analytics-service:
     build: ./analytics-service
     depends_on:
-      - mysql
-      - mongodb
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    env_file:
+      - ./.env_analytics_service
+    networks:
+      - data-processing
 
   mysql:
-    image: mysql:5.7
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: datadb
+    build: ./mysql
+    networks:
+      - data-processing
+    ports:
+      - "3306:3306"
     volumes:
-      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
       - mysql_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=rawdata
+      - MYSQL_USER=write-user
+      - MYSQL_PASSWORD=write-pass
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongodb:
-    image: mongo:latest
+    build: ./mongodb
+    networks:
+      - data-processing
     volumes:
-      - ./mongodb/init.js:/docker-entrypoint-initdb.d/init.js
+      - ./mongodb/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
       - mongodb_data:/data/db
+    env_file:
+      - ./.env_mongodb
+    healthcheck:
+      test: >
+        mongosh admin --quiet --eval 'db.runCommand("ping").ok' --host localhost -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
 volumes:
   mysql_data:
   mongodb_data:
+
+networks:
+  data-processing:
+    driver: bridge

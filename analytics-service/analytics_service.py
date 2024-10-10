@@ -1,16 +1,26 @@
 import time
 import mysql.connector
+import os
 from pymongo import MongoClient
 from mysql.connector import Error
 
+
 def get_mysql_connection(max_retries=5, delay=5):
     for attempt in range(max_retries):
+        host = os.environ['READ_DB_HOST']
+        user = os.environ['READ_DB_USER']
+        password = os.environ['READ_DB_PASSWORD']
+        database = os.environ['READ_DB_NAME']
+        print(f"db host: {host}")
+        print(f"db user: {user}")
+        print(f"db password: {password}")
+        print(f"db database: {database}")
         try:
             return mysql.connector.connect(
-                host="mysql",
-                user="root",
-                password="rootpassword",
-                database="datadb"
+                host=os.environ['READ_DB_HOST'],
+                user=os.environ['READ_DB_USER'],
+                password=os.environ['READ_DB_PASSWORD'],
+                database=os.environ['READ_DB_NAME']
             )
         except Error as e:
             if attempt < max_retries - 1:
@@ -19,8 +29,16 @@ def get_mysql_connection(max_retries=5, delay=5):
             else:
                 raise e
 
+
 def get_mongodb_connection():
-    return MongoClient('mongodb://mongodb:27017')
+    # Connection details
+    mongo_host = os.environ['WRITE_DB_HOST']  # or the IP/hostname of your MongoDB server
+    database_name = os.environ['WRITE_DB_NAME']  # or the name of your database
+    username = os.environ['WRITE_DB_USER']  # or the username of your database
+    password = os.environ['WRITE_DB_PASSWORD']  # or the password of your database
+    uri = f"mongodb://{username}:{password}@{mongo_host}/{database_name}"
+    return MongoClient(uri)
+
 
 def calculate_analytics():
     mysql_conn = get_mysql_connection()
@@ -48,8 +66,8 @@ def calculate_analytics():
     mysql_conn.close()
     
     mongo_client = get_mongodb_connection()
-    db = mongo_client.analyticsdb
-    collection = db.analytics
+    db = mongo_client[os.environ['WRITE_DB_NAME']]
+    collection = db[os.environ['WRITE_DB_COLLECTION']]
     
     for userid, data in analytics.items():
         collection.update_one(

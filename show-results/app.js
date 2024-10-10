@@ -5,6 +5,16 @@ const { MongoClient } = require('mongodb');
 const app = express();
 const port = 8002;
 
+const dbName = process.env.DB_NAME;
+const dbCollection = process.env.DB_COLLECTION;
+const dbUser = process.env.DB_USER;
+const dbPassword = process.env.DB_PASSWORD;
+const dbHost = process.env.DB_HOST || 'mongodb'; // Default to 'localhost' if not specified
+const dbPort = process.env.DB_PORT || '27017'; // Default to '27017' if not specified
+
+const mongoUri = `mongodb://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
+
+
 app.use(express.json());
 
 app.get('/results', async (req, res) => {
@@ -23,10 +33,10 @@ app.get('/results', async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        const client = new MongoClient('mongodb://mongodb:27017');
+        const client = new MongoClient(mongoUri);
         await client.connect();
-        const db = client.db('analyticsdb');
-        const collection = db.collection('analytics');
+        const db = client.db(dbName);
+        const collection = db.collection(dbCollection);
 
         const results = await collection.find({ userid }).toArray();
         client.close();
