@@ -81,4 +81,4 @@ def calculate_analytics():
 if __name__ == '__main__':
     while True:
         calculate_analytics()
-        time.sleep(60)  # Run every minute
+        time.sleep(60)  
