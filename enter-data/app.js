@@ -9,10 +9,10 @@ const port = 8001;
 app.use(bodyParser.json());
 
 const dbConfig = {
-    host: "mysql",
-    user: "root",
-    password: "rootpassword",
-    database: "datadb"
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
 };
 
 app.post('/enter-data', async (req, res) => {
