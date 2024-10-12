@@ -4,7 +4,6 @@ import os
 from pymongo import MongoClient
 from mysql.connector import Error
 import numpy as np
-from scipy.stats import zscore  # For outlier detection using Z-score
 
 def get_mysql_connection(max_retries=5, delay=5):
     for attempt in range(max_retries):
@@ -34,31 +33,54 @@ def get_mongodb_connection():
     return MongoClient(uri)
 
 def detect_outliers(values):
-    z_scores = zscore(values)
-    outliers = np.where(np.abs(z_scores) > 3)  # Outliers defined as data points where Z > 3
-    return outliers[0].tolist()
+    threshold = 3
+    mean = np.mean(values)
+    std_dev = np.std(values)
+    outliers = [x for x in values if abs(x - mean) > threshold * std_dev]
+    return outliers
+
+def normalize_data(values):
+    min_val = np.min(values)
+    max_val = np.max(values)
+    if max_val - min_val == 0:
+        return values  # Return as is if all values are the same
+    normalized = (values - min_val) / (max_val - min_val)
+    return normalized
+
+def categorize_values(values):
+    categories = []
+    for value in values:
+        if value < 25:
+            categories.append('low')
+        elif 25 <= value < 75:
+            categories.append('medium')
+        else:
+            categories.append('high')
+    return categories
+
+def calculate_percentiles(values):
+    percentiles = {
+        "25th_percentile": np.percentile(values, 25),
+        "50th_percentile": np.percentile(values, 50),
+        "75th_percentile": np.percentile(values, 75)
+    }
+    return percentiles
 
 def calculate_analytics():
     mysql_conn = get_mysql_connection()
     cursor = mysql_conn.cursor()
     
-    cursor.execute("SELECT userid, value, timestamp FROM data")
+    cursor.execute("SELECT userid, value FROM data")
     results = cursor.fetchall()
     
     analytics = {}
-    for userid, value, timestamp in results:
+    for userid, value in results:
         if userid not in analytics:
-            analytics[userid] = {"values": [], "timestamps": []}
+            analytics[userid] = {"values": []}
         analytics[userid]["values"].append(value)
-        analytics[userid]["timestamps"].append(timestamp)
     
     for userid, data in analytics.items():
         values = np.array(data["values"])
-        timestamps = np.array(data["timestamps"])
-        
-        # Calculate trend analysis
-        rate_of_change = np.diff(values) / values[:-1]  # Calculate the rate of change
-        rolling_avg = np.convolve(values, np.ones(5)/5, mode='valid')  # 5-point rolling average
         
         analytics[userid] = {
             "max": np.max(values),
@@ -66,15 +88,11 @@ def calculate_analytics():
             "avg": np.mean(values),
             "count": len(values),
             "std_dev": np.std(values),
-            "median": np.median(values),
             "sum": np.sum(values),
-            "range": np.ptp(values),
-            "variance": np.var(values),
-            "percentiles": np.percentile(values, [25, 50, 75]),
-            "iqr": np.percentile(values, 75) - np.percentile(values, 25),
-            "outliers": detect_outliers(values),  # List of outliers
-            "rate_of_change": rate_of_change.tolist(),  # Track how values change over time
-            "rolling_avg": rolling_avg.tolist(),  # Rolling average for trend analysis
+            "outliers": detect_outliers(values),  # Simple outlier detection
+            "normalized_values": normalize_data(values).tolist(),  # Normalize values between 0 and 1
+            "categories": categorize_values(values),  # Categorize values as 'low', 'medium', 'high'
+            "percentiles": calculate_percentiles(values),  # Calculate 25th, 50th, and 75th percentiles
         }
     
     cursor.close()
