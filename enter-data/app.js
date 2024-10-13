@@ -2,18 +2,26 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const axios = require('axios');
+const path = require('path');
+const cors = require('cors');
 
 const app = express();
-const port = 8001;
+const port = process.env.ENTER_DATA_PORT || 8001;
 
 app.use(bodyParser.json());
+app.use(cors());
+app.use(express.static(path.join(__dirname, 'public')));
 
 const dbConfig = {
-    host: "mysql",
-    user: "root",
-    password: "rootpassword",
-    database: "datadb"
+    host: process.env.MYSQL_HOST || "mysql",
+    user: process.env.MYSQL_USER || "writer",
+    password: process.env.MYSQL_PASSWORD || "writerpassword",
+    database: process.env.MYSQL_DATABASE || "datadb"
 };
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.post('/enter-data', async (req, res) => {
     const { userid, password, value } = req.body;
@@ -23,7 +31,7 @@ app.post('/enter-data', async (req, res) => {
     }
 
     try {
-        const authResponse = await axios.post('http://authentication-service:8000/validate', { userid, password });
+        const authResponse = await axios.post(`http://${process.env.AUTH_SERVICE_HOST || 'authentication-service'}:${process.env.AUTH_SERVICE_PORT || '8000'}/validate`, { userid, password });
         
         if (authResponse.status !== 200) {
             return res.status(401).json({ error: "Invalid credentials" });
@@ -43,5 +51,5 @@ app.post('/enter-data', async (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Enter-data service listening at http://localhost:${port}`);
+    console.log(`Enter Data service listening at http://localhost:${port}`);
 });

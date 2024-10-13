@@ -1,26 +1,19 @@
+import os
 import time
 import mysql.connector
 from pymongo import MongoClient
 from mysql.connector import Error
 
-def get_mysql_connection(max_retries=5, delay=5):
-    for attempt in range(max_retries):
-        try:
-            return mysql.connector.connect(
-                host="mysql",
-                user="root",
-                password="rootpassword",
-                database="datadb"
-            )
-        except Error as e:
-            if attempt < max_retries - 1:
-                print(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...")
-                time.sleep(delay)
-            else:
-                raise e
+def get_mysql_connection():
+    return mysql.connector.connect(
+        host=os.environ.get('MYSQL_HOST', 'mysql'),
+        user=os.environ.get('MYSQL_USER', 'reader'),
+        password=os.environ.get('MYSQL_PASSWORD', 'readerpassword'),
+        database=os.environ.get('MYSQL_DATABASE', 'datadb')
+    )
 
 def get_mongodb_connection():
-    return MongoClient('mongodb://mongodb:27017')
+    return MongoClient(os.environ.get('MONGO_URI', 'mongodb://writer:writerpassword@mongodb:27017/analyticsdb'))
 
 def calculate_analytics():
     mysql_conn = get_mysql_connection()
@@ -60,7 +53,11 @@ def calculate_analytics():
     
     mongo_client.close()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     while True:
-        calculate_analytics()
+        try:
+            calculate_analytics()
+            print("Analytics calculated and stored successfully")
+        except Exception as e:
+            print(f"An error occurred: {e}")
         time.sleep(60)  # Run every minute
