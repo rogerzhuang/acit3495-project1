@@ -23,7 +23,7 @@ docker-compose up --build
 
 ### 1. Authentication Service
 
-The authentication service validates user credentials.
+The authentication service validates user credentials and is used internally by other services..
 
 #### User 1:
 
@@ -39,26 +39,13 @@ Expected output:
 {"message":"Authentication successful","userid":"user1"}
 ```
 
-#### User 2:
-
-```bash
-curl -X POST http://localhost:8000/validate \
--H "Content-Type: application/json" \
--d '{"userid": "user2", "password": "password2"}'
-```
-
-Expected output:
-
-```json
-{"message":"Authentication successful","userid":"user2"}
-```
-
-
 ### 2. Enter Data Service
 
 The enter data service allows authenticated users to input numerical data.
 
-#### User 1 enters data:
+Access the GUI at: http://localhost:8001
+
+You can also use the API directly:
 
 ```bash
 curl -X POST http://localhost:8001/enter-data \
@@ -72,30 +59,16 @@ Expected output:
 {"message":"Data entered successfully"}
 ```
 
-
-#### User 2 enters data:
-
-```bash
-curl -X POST http://localhost:8001/enter-data \
--H "Content-Type: application/json" \
--d '{"userid": "user2", "password": "password2", "value": 37.8}'
-```
-
-Expected output:
-
-```json
-{"message":"Data entered successfully"}
-```
-
-
 ### 3. Show Results Service
 
 The show results service displays analytics results for authenticated users.
 
-#### User 1 views results:
+Access the GUI at: http://localhost:8002
+
+You can also use the API directly:
 
 ```bash
-curl -X GET http://localhost:8002/results \
+curl -X POST http://localhost:8002/results \
 -H "Content-Type: application/json" \
 -d '{"userid": "user1", "password": "password1"}'
 ```
@@ -114,32 +87,8 @@ Example output:
 ]
 ```
 
-#### User 2 views results:
-
-```bash
-curl -X GET http://localhost:8002/results \
--H "Content-Type: application/json" \
--d '{"userid": "user2", "password": "password2"}'
-```
-
-Example output:
-
-```json
-[
-    {
-        "userid": "user2",
-        "max": 37.8,
-        "min": 37.8,
-        "avg": 37.8,
-        "count": 1
-    }
-]
-```
-
-
 ## Notes
 
 - The analytics service runs periodically to calculate statistics for each user's data.
 - Results shown are examples and may vary based on the actual data entered.
 - In a production environment, ensure proper security measures are implemented, including secure password storage and HTTPS.
-
